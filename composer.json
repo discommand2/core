@@ -1,0 +1,25 @@
+{
+  "name": "discommand2/core",
+  "description": "The Composer package that includes the core functionalities of the discommand2 system.",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Russell Purinton",
+      "email": "russell.purinton@gmail.com"
+    }
+  ],
+  "support": {
+    "discord": "https://discord.gg/yMs5vgvyV4"
+  },
+  "require": {},
+  "require-dev": {},
+  "autoload": {
+    "psr-4": {
+      "Discommand2\\Core\\": "src/"
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "version": "2.0.0"
+}
