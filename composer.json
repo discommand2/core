@@ -12,7 +12,9 @@
   "support": {
     "discord": "https://discord.gg/yMs5vgvyV4"
   },
-  "require": {},
+  "require": {
+    "php": ">=8.2"
+  },
   "require-dev": {},
   "autoload": {
     "psr-4": {
