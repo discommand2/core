@@ -3,7 +3,6 @@
 namespace Discommand2\Core;
 
 use Monolog\Logger;
-use Monolog\Level;
 use Monolog\Handler\StreamHandler;
 
 /**
