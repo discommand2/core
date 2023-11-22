@@ -22,12 +22,7 @@ class Brain
     public function __construct(private ?Logger $logger = null, private ?string $myName = null): void
     {
         if (is_null($myName)) $this->myName = 'testBrain';
-        if (is_null($logger)) {
-            $this->logger = new Logger($this->myName);
-            $this->logger->pushHandler(new StreamHandler('php://stdout', Level::Info));
-        }
-
-
+        if (is_null($logger)) $this->logger = (new Logger($this->myName))->pushHandler(new StreamHandler('php://stdout', Level::Info));
         $this->logger->info($this->myName . ' is alive.');
     }
 
@@ -45,6 +40,6 @@ class Brain
      */
     public function __destruct(): void
     {
-        $this->logger->info($this->myName . ' is dead.');
+        $this->logger->info($this->myName . ' died.');
     }
 }
