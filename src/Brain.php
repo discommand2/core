@@ -30,6 +30,6 @@ class Brain
             $this->myName = 'testBrain';
         }
 
-        $this->logger->info('Brain Online');
+        $this->logger->info($this->myName . ' is alive.');
     }
 }
