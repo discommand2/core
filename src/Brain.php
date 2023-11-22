@@ -32,4 +32,13 @@ class Brain
 
         $this->logger->info($this->myName . ' is alive.');
     }
+
+    /**
+     * This method is the main method of the application.
+     * It is responsible for the main loop of the application.
+     */
+    public function think(): void
+    {
+        $this->logger->info('I am thinking.');
+    }
 }
