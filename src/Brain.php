@@ -6,15 +6,30 @@ use Monolog\Logger;
 use Monolog\Level;
 use Monolog\Handler\StreamHandler;
 
+/**
+ * Class Brain
+ * 
+ * This class represents the "brain" of the application.
+ */
 class Brain
 {
-    private static ?Brain $instance = null;
-    private ?Logger $logger = null;
-
-    public function __construct(public ?string $myName = null)
+    /**
+     * Brain constructor.
+     *
+     * @param Logger|null $logger
+     * @param string|null $myName
+     */
+    public function __construct(private ?Logger $logger = null, private ?string $myName = null)
     {
-        $this->logger = new Logger('brain');
-        $this->logger->pushHandler(new StreamHandler('php://stdout', Level::Debug));
+        if (is_null($logger)) {
+            $this->logger = new Logger('Brain');
+            $this->logger->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
+        }
+
+        if (is_null($myName)) {
+            $this->myName = 'testBrain';
+        }
+
         $this->logger->info('Brain Online');
     }
 }
