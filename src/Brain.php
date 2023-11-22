@@ -2,6 +2,7 @@
 
 namespace Discommand2\Core;
 
+use Monolog\Level;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 
@@ -18,16 +19,14 @@ class Brain
      * @param Logger|null $logger
      * @param string|null $myName
      */
-    public function __construct(private ?Logger $logger = null, private ?string $myName = null)
+    public function __construct(private ?Logger $logger = null, private ?string $myName = null): void
     {
+        if (is_null($myName)) $this->myName = 'testBrain';
         if (is_null($logger)) {
-            $this->logger = new Logger('Brain');
-            $this->logger->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
+            $this->logger = new Logger($this->myName);
+            $this->logger->pushHandler(new StreamHandler('php://stdout', Level::Info));
         }
 
-        if (is_null($myName)) {
-            $this->myName = 'testBrain';
-        }
 
         $this->logger->info($this->myName . ' is alive.');
     }
@@ -39,5 +38,13 @@ class Brain
     public function think(): void
     {
         $this->logger->info('I am thinking.');
+    }
+
+    /**
+     * This method is responsible for the shutdown of the application.
+     */
+    public function __destruct(): void
+    {
+        $this->logger->info($this->myName . ' is dead.');
     }
 }
