@@ -11,7 +11,7 @@ class Config
             DIRECTORY_SEPARATOR . '..' .
             DIRECTORY_SEPARATOR . '..' .
             DIRECTORY_SEPARATOR . '..' .
-            DIRECTORY_SEPARATOR . 'config' .
+            DIRECTORY_SEPARATOR . 'configs' .
             DIRECTORY_SEPARATOR . $name . '.json';
 
         if (!file_exists($path)) return null;
@@ -20,19 +20,24 @@ class Config
         return $config[$key] ?? null;
     }
 
-    public static function set(string $name, string $key, mixed $value): bool
+    public static function set(string $name, string|array $key, mixed $value = null): bool
     {
         $path = __DIR__ .
             DIRECTORY_SEPARATOR . '..' .
             DIRECTORY_SEPARATOR . '..' .
             DIRECTORY_SEPARATOR . '..' .
             DIRECTORY_SEPARATOR . '..' .
-            DIRECTORY_SEPARATOR . 'config' .
+            DIRECTORY_SEPARATOR . 'configs' .
             DIRECTORY_SEPARATOR . $name . '.json';
 
         if (!file_exists($path)) return false;
         $config = json_decode(file_get_contents($path), true);
-        $config[$key] = $value;
-        return file_put_contents($path, json_encode($config, JSON_PRETTY_PRINT)) !== false;
+        if (is_array($key)) {
+            $config = array_merge($config, $key);
+        } else {
+            $config[$key] = $value;
+        }
+        file_put_contents($path, json_encode($config, JSON_PRETTY_PRINT));
+        return true;
     }
 }
