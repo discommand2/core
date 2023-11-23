@@ -14,7 +14,8 @@
   },
   "require": {
     "php": ">=8.2",
-    "monolog/monolog": "^3.5"
+    "monolog/monolog": "^3.5",
+    "symfony/process": "^6.3"
   },
   "autoload": {
     "psr-4": {
