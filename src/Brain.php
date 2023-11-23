@@ -30,15 +30,16 @@ class Brain
      * This method is the main method of the application.
      * It is responsible for the main loop of the application.
      */
-    public function think(): void
+    public function think(): bool
     {
-        $this->logger->info('I am thinking.');
+        $this->logger->info('I am thinking., but not for long.');
+        return true;
     }
 
     /**
      * This method is responsible for the shutdown of the application.
      */
-    public function __destruct(): void
+    public function __destruct()
     {
         $this->logger->info($this->myName . ' died.');
     }
