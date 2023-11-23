@@ -19,10 +19,9 @@ class Brain
      * @param Logger|null $logger
      * @param string|null $myName
      */
-    public function __construct(private ?Logger $logger = null, private ?string $myName = null)
+    public function __construct(private ?Logger $logger = null, private ?string $myName = 'testBrain')
     {
-        if (is_null($myName)) $this->myName = 'testBrain';
-        if (is_null($logger)) $this->logger = (new Logger($this->myName))->pushHandler(new StreamHandler('php://stdout', Level::Info));
+        if (is_null($logger)) $this->logger = LogFactory::create($this->myName);
         $this->logger->info($this->myName . ' is alive.');
     }
 
