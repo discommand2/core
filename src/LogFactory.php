@@ -31,21 +31,9 @@ class LogFactory
         return new Logger($name);
     }
 
-    static function getBasePath(): string
-    {
-        $base_path = Config::get('paths', 'logs');
-        if (substr($base_path, 0, 1) != '/') {
-            $base_path = __DIR__ . '/../' . $base_path;
-        }
-        if (!file_exists($base_path)) {
-            shell_exec("mkdir -p $base_path");
-        }
-        return $base_path;
-    }
-
     static function getConfigs(): array
     {
-        return Config::get('logs');
+        return Config::get('monolog');
     }
 
     static function validateConfig(array $config): void

@@ -6,6 +6,7 @@ class Config
 {
     public static function get(string $name, string $key = null): mixed
     {
+        // expects to be installed under vendor/discommand2/core/src
         $path = __DIR__ .
             DIRECTORY_SEPARATOR . '..' .
             DIRECTORY_SEPARATOR . '..' .
@@ -20,8 +21,9 @@ class Config
         return $config[$key] ?? null;
     }
 
-    public static function set(string $name, string|array $key, mixed $value = null): bool
+    public static function set(string $name, array $keys, mixed $value = null): bool
     {
+        // expects to be installed under vendor/discommand2/core/src
         $path = __DIR__ .
             DIRECTORY_SEPARATOR . '..' .
             DIRECTORY_SEPARATOR . '..' .
@@ -32,11 +34,15 @@ class Config
 
         if (!file_exists($path)) return false;
         $config = json_decode(file_get_contents($path), true);
-        if (is_array($key)) {
-            $config = array_merge($config, $key);
-        } else {
-            $config[$key] = $value;
+
+        $temp = &$config;
+        foreach ($keys as $key) {
+            if (!isset($temp[$key])) $temp[$key] = [];
+            $temp = &$temp[$key];
         }
+
+        $temp = $value;
+
         file_put_contents($path, json_encode($config, JSON_PRETTY_PRINT));
         return true;
     }
