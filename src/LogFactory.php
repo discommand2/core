@@ -12,18 +12,27 @@ class LogFactory
     static function create($name): Logger
     {
         $log = self::createLogger($name);
-        $base_path = self::getBasePath();
         $configs = self::getConfigs();
 
         foreach ($configs as $config) {
             self::validateConfig($config);
-            $path = self::validatePath($config['path'], $base_path);
+            $path = self::validatePath($config['path']);
             $level = self::validateLevel($config['level']);
             $log->pushHandler(new StreamHandler($path, $level));
         }
 
         $log->debug("Log initialized!");
         return $log;
+    }
+
+    static function getBasePath(): string
+    {
+        // expects to be installed under vendor/discommand2/core/src
+        return __DIR__ .
+            DIRECTORY_SEPARATOR . '..' .
+            DIRECTORY_SEPARATOR . '..' .
+            DIRECTORY_SEPARATOR . '..' .
+            DIRECTORY_SEPARATOR . '..';
     }
 
     static function createLogger($name): Logger
@@ -43,13 +52,13 @@ class LogFactory
         }
     }
 
-    static function validatePath($path, $base_path)
+    static function validatePath($path)
     {
         if ($path === 'php://stdout' || $path === 'php://stderr') {
             return $path;
         }
         if (substr($path, 0, 1) != '/') {
-            $path = $base_path . '/' . $path;
+            $path = self::getBasePath() . DIRECTORY_SEPARATOR . $path;
         }
         if (!is_dir(dirname($path))) {
             shell_exec("mkdir -p " . dirname($path));
