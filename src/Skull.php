@@ -2,6 +2,7 @@
 
 namespace Discommand2\Core;
 
+use Discommand2\Composer;
 use Discommand2\Core\Validators\SkullValidators;
 
 class Skull
