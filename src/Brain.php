@@ -2,10 +2,6 @@
 
 namespace Discommand2\Core;
 
-use Monolog\Level;
-use Monolog\Logger;
-use Monolog\Handler\StreamHandler;
-
 /**
  * Class Brain
  * 
@@ -19,7 +15,7 @@ class Brain
      * @param Logger|null $logger
      * @param string|null $myName
      */
-    public function __construct(private ?Logger $logger = null, private ?string $myName = 'testBrain')
+    public function __construct(private ?Log $logger = null, private ?string $myName = 'testBrain')
     {
         if (is_null($logger)) $this->logger = LogFactory::create($this->myName);
         $this->logger->info($this->myName . ' is alive.');
