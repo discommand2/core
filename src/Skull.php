@@ -32,6 +32,8 @@ class Skull
                 return $this->config($argv);
             case 'create':
                 return $this->create($argv);
+            case 'clone':
+                return $this->clone($argv);
             case 'delete':
                 return $this->delete($argv);
             case 'clean':
@@ -49,6 +51,13 @@ class Skull
         Git::command($this->rootDir, "submodule add -b main -f $url $brainPath") or throw new \Exception("Failed to clone $url");
         Composer::command($brainPath, "install") or throw new \Exception("Failed to install dependencies for $brainName");
         $this->log->info("$brainName created successfully");
+        return true;
+    }
+
+    public function clone($argv): bool
+    {
+        // todo...
+        $this->log->info("cloned successfully");
         return true;
     }
 
