@@ -6,6 +6,8 @@ use Discommand2\Core\Validators\SkullValidators;
 
 class Skull
 {
+    private array $brains = [];
+
     public function __construct(private Log $log, private string $rootDir, private string $myName)
     {
         $this->log->debug("skull initialized");
@@ -31,6 +33,8 @@ class Skull
                 return $this->create($argv);
             case 'delete':
                 return $this->delete($argv);
+            case 'clean':
+                return $this->clean($argv);
             default:
                 return $this->help($argv);
         }
@@ -41,7 +45,7 @@ class Skull
     {
         [$brainName, $brainPath] = SkullValidators::validateCreate($argv);
         $url = SkullValidators::createFromTemplate($argv);
-        Git::command("submodule add -b main -f $url $brainPath") or throw new \Exception("Failed to clone $url");
+        Git::command($this->rootDir, "submodule add -b main -f $url $brainPath") or throw new \Exception("Failed to clone $url");
         Composer::command("install --working-dir=$brainPath") or throw new \Exception("Failed to install dependencies for $brainName");
         $this->log->info("$brainName created successfully");
         return true;
@@ -60,10 +64,10 @@ class Skull
         }
 
         $this->log->info("Deleting $brainName...");
-        Git::command("submodule deinit -f $brainPath") or throw new \Exception("Failed to deinit $brainName");
-        Git::command("rm -f $brainPath") or throw new \Exception("Failed to git remove $brainName");
+        Git::command($this->rootDir, "submodule deinit -f $brainPath") or throw new \Exception("Failed to deinit $brainName");
+        Git::command($this->rootDir, "rm -f $brainPath") or throw new \Exception("Failed to git remove $brainName");
         shell_exec("rm -rf {$this->rootDir}/.git/modules/$brainName 2>&1");
-        Git::command("gc --aggressive --prune=now") or throw new \Exception("Failed to git gc");
+        Git::command($this->rootDir, "gc --aggressive --prune=now") or throw new \Exception("Failed to git gc");
         $this->log->info("$brainName deleted successfully");
         return true;
     }
@@ -82,7 +86,7 @@ class Skull
 
     public function upgrade($argv): bool
     {
-        [$plugin, $force] = $this->validateUpgrade($argv);
+        [$plugin, $force] = SkullValidators::validateUpgrade($argv);
         if (!$force) {
             $confirmation = readline("[WARNING] Are you sure you want to upgrade$plugin beyond the current stable version? Please type 'yes' exactly to confirm: ");
             if ($confirmation !== 'yes') {
@@ -112,17 +116,15 @@ class Skull
 
     public function start($argv): bool
     {
-        $this->log->info("Starting {$this->myName}...");
-        $this->brain = new Brain($this->log, $this->myName);
-        $this->brain->think() or throw new \Exception("{$this->myName} failed to think");
-        $this->log->info("{$this->myName} started successfully");
+        $this->brains[] = new Brain($this->log, $this->myName);
+        foreach ($this->brains as $brain) $brain->think() or throw new \Exception("{$this->myName} failed to think");
         return true;
     }
 
     public function config($argv): bool
     {
         if (!isset($argv[2]) || $argv[2] === '') throw new \Exception("Plugin name not specified");
-        if (!$this->validatePluginName($argv[2])) throw new \Exception("Plugin not installed");
+        if (!SkullValidators::validatePluginName($this->rootDir, $argv[2])) throw new \Exception("Plugin not installed");
         $pluginName = $argv[2];
         if (count($argv) < 5) throw new \Exception("Insufficient arguments");
         $this->log->info("Configuring {$this->myName}...");
@@ -137,6 +139,17 @@ class Skull
         $temp = $value;
         Config::set($pluginName, $config);
         $this->log->info("configured successfully");
+        return true;
+    }
+
+    public function clean($argv): bool
+    {
+        $this->log->info("Cleaning...");
+        $this->log->info("Cleaning composer cache...");
+        Composer::command('clear-cache') or throw new \Exception("Failed to clean composer cache");
+        $this->log->info("Cleaning git cache...");
+        Git::command($this->rootDir, 'gc --aggressive --prune=now') or throw new \Exception("Failed to clean git cache");
+        $this->log->info("Cleaning complete");
         return true;
     }
 
