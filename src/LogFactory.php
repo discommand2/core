@@ -4,24 +4,25 @@ namespace Discommand2\Core;
 
 use Exception;
 use Monolog\Level;
-use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 
 class LogFactory
 {
-    static function create($name): Logger
+    static function create($name): Log
     {
-        $log = self::createLogger($name);
-        $configs = self::getConfigs();
+        $log = self::pushHandlers(self::createLogger($name), self::getConfigs());
+        $log->debug("Log initialized!");
+        return $log;
+    }
 
+    static function pushHandlers($log, $configs): Log
+    {
         foreach ($configs as $config) {
             self::validateConfig($config);
             $path = self::validatePath($config['path']);
             $level = self::validateLevel($config['level']);
             $log->pushHandler(new StreamHandler($path, $level));
         }
-
-        $log->debug("Log initialized!");
         return $log;
     }
 
@@ -35,9 +36,9 @@ class LogFactory
             DIRECTORY_SEPARATOR . '..';
     }
 
-    static function createLogger($name): Logger
+    static function createLogger($name): Log
     {
-        return new Logger($name);
+        return new Log($name);
     }
 
     static function getConfigs(): array
