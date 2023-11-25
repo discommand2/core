@@ -11,10 +11,11 @@ class Git
         return $git;
     }
 
-    static function command(string $command): bool
+    static function command(string $wdir, string $command): bool
     {
         $git = self::which_git();
-        exec("$git $command 2>&1", $output, $exit_code);
+        $wdir = escapeshellarg($wdir);
+        exec("cd $wdir && $git $command 2>&1", $output, $exit_code);
         $output = array_map('trim', $output);
         if ($exit_code !== 0) throw new \Exception("Git command failed: " . implode(" ", $output));
         return true;

@@ -2,11 +2,11 @@
 
 namespace Discommand2\Core;
 
+use Discommand2\Core\Validators\SkullValidators;
+
 class Skull
 {
-    private ?Brain $brain = null;
-
-    public function __construct(private Log $log, private string $myName)
+    public function __construct(private Log $log, private string $rootDir, private string $myName)
     {
         $this->log->debug("skull initialized");
     }
@@ -31,19 +31,16 @@ class Skull
                 return $this->create($argv);
             case 'delete':
                 return $this->delete($argv);
-            case 'help':
-                return $this->help($argv);
             default:
-                $this->log->error("Invalid command");
-                return false;
+                return $this->help($argv);
         }
         return true;
     }
 
     public function create($argv): bool
     {
-        [$brainName, $brainPath] = $this->validateCreate($argv);
-        $url = $this->createFromTemplate($argv);
+        [$brainName, $brainPath] = SkullValidators::validateCreate($argv);
+        $url = SkullValidators::createFromTemplate($argv);
         Git::command("submodule add -b main -f $url $brainPath") or throw new \Exception("Failed to clone $url");
         Composer::command("install --working-dir=$brainPath") or throw new \Exception("Failed to install dependencies for $brainName");
         $this->log->info("$brainName created successfully");
@@ -52,7 +49,7 @@ class Skull
 
     public function delete($argv): bool
     {
-        [$brainName, $brainPath, $force] = $this->validateDelete($argv);
+        [$brainName, $brainPath, $force] = SkullValidators::validateDelete($argv);
 
         if (!$force) {
             $confirmation = readline("[WARNING] Are you sure you want to delete " . $brainName . " including their home directory, sql database(s), message history, and settings? Please type 'yes' exactly to confirm: ");
@@ -65,6 +62,7 @@ class Skull
         $this->log->info("Deleting $brainName...");
         Git::command("submodule deinit -f $brainPath") or throw new \Exception("Failed to deinit $brainName");
         Git::command("rm -f $brainPath") or throw new \Exception("Failed to git remove $brainName");
+        shell_exec("rm -rf {$this->rootDir}/.git/modules/$brainName 2>&1");
         Git::command("gc --aggressive --prune=now") or throw new \Exception("Failed to git gc");
         $this->log->info("$brainName deleted successfully");
         return true;
@@ -142,94 +140,9 @@ class Skull
         return true;
     }
 
-    // Additional methods from Discommand2 class
-    public function validateUpgrade($argv): array
-    {
-        $plugin = '';
-        $force = false;
-        if (isset($argv[2]) && $argv[2] != '') {
-            if ($argv[2] !== 'force') {
-                $force = isset($argv[3]) && $argv[3] === 'force';
-                if (strpos($argv[2], '/') === false) $argv[2] = 'discommand2/' . $argv[2];
-                $plugin = ' ' . $argv[2];
-            } else {
-                $force = true;
-            }
-        }
-        return [$plugin, $force];
-    }
-
-    public function validateCreate($argv): array
-    {
-        if (!isset($argv[2])) throw new \Exception("Brain name not specified!");
-        if (!$this->validateBrainName($argv[2])) throw new \Exception("Invalid brain name!");
-        $brainName = $argv[2];
-        $basePath = Config::get('discommand2', 'brains');
-        $brainPath = $basePath . '/' . $brainName;
-        if (file_exists($brainPath)) throw new \Exception("$brainName already exists! use config, start, or delete instead.");
-        return [$brainName, $brainPath];
-    }
-
-    public function createFromTemplate($argv): string
-    {
-        if (!isset($argv[3]) || $argv[3] === '') $argv[3] = "brain-template";
-        if (strpos($argv[3], '/') === false) $argv[3] = 'discommand2/' . $argv[3];
-        if (strpos($argv[3], 'https://') === 0) $url = $argv[3];
-        else if (strpos($argv[3], 'git@github:') === 0) $url = $argv[3];
-        else if (strpos($argv[3], 'bitbucket.org:') === 0) $url = $argv[3];
-        else $url = 'git@github.com:' . $argv[3] . '.git';
-        $this->log->info("Creating {$argv[2]} from template " . $url);
-        return $url;
-    }
-
-    public function validateDelete($argv): array
-    {
-        if (!isset($argv[2])) throw new \Exception("Brain name not specified!");
-        if (!$this->validateBrainName($argv[2])) throw new \Exception("Invalid brain name!");
-        $brainName = $argv[2];
-        $brainPath = $this->getPath($brainName);
-        if (!file_exists($brainPath)) throw new \Exception("$brainName doesn't exist to begin with!");
-        $force = isset($argv[3]) && $argv[3] === 'force';
-        return [$brainName, $brainPath, $force];
-    }
-
-    public function getPath($brainName): string
-    {
-        $basePath = Config::get('discommand2', 'brains');
-        return $basePath . '/' . $brainName;
-    }
-
-    public function validateBrainName($name): bool
-    {
-        // must be a valid linux username/foldername (no spaces, no special characters except _ and -)
-        return preg_match('/^[a-z0-9_-]+$/i', $name);
-    }
-
-    // Additional methods from Skull class
-    public function validatePluginName($pluginName): bool
-    {
-        $composerLock = json_decode(file_get_contents(__DIR__ . '/../composer.lock'), true);
-        foreach ($composerLock['packages'] as $package) {
-            $lsl = strrpos($package['name'], '/');
-            $name = substr($package['name'], $lsl + 1);
-            if ($name === $pluginName) return true;
-        }
-        return false;
-    }
-
-    public function help($argv)
+    public function help($argv): bool
     {
         $this->log->info("Usage: {$argv[0]} <command> [options]");
-        $this->log->info("Commands:");
-        $this->log->info("  start\t\t\tStarts the brain(s)");
-        $this->log->info("  update [plugin]\tUpdates the brain or a plugin");
-        $this->log->info("  upgrade [plugin]\tUpgrades the brain or a plugin");
-        $this->log->info("  install <plugin>\tInstalls a plugin");
-        $this->log->info("  remove <plugin>\tRemoves a plugin");
-        $this->log->info("  config <plugin> <key> <value>\tSets a config value for a plugin");
-        $this->log->info("  create <brain> [template]\tCreates a brain from a template");
-        $this->log->info("  delete <brain>\tDeletes a brain");
-        $this->log->info("  help\t\t\tShows this help message");
         return true;
     }
 }
