@@ -31,16 +31,11 @@ class Skull
                 return $this->create($argv);
             case 'delete':
                 return $this->delete($argv);
+            case 'help':
+                return $this->help($argv);
             default:
-                echo "Usage:\n";
-                echo "brain start\n";
-                echo "brain update [pluginName]\n";
-                echo "brain upgrade [pluginName] [force]\n";
-                echo "brain install [pluginName]\n";
-                echo "brain remove [pluginName]\n";
-                echo "brain config [pluginName] [setting] [key/value] [key/value]\n";
-                echo "brain create [brainName] [template]\n";
-                echo "brain delete [brainName] [force]\n";
+                $this->log->error("Invalid command");
+                return false;
         }
         return true;
     }
@@ -220,5 +215,21 @@ class Skull
             if ($name === $pluginName) return true;
         }
         return false;
+    }
+
+    public function help($argv)
+    {
+        $this->log->info("Usage: {$argv[0]} <command> [options]");
+        $this->log->info("Commands:");
+        $this->log->info("  start\t\t\tStarts the brain(s)");
+        $this->log->info("  update [plugin]\tUpdates the brain or a plugin");
+        $this->log->info("  upgrade [plugin]\tUpgrades the brain or a plugin");
+        $this->log->info("  install <plugin>\tInstalls a plugin");
+        $this->log->info("  remove <plugin>\tRemoves a plugin");
+        $this->log->info("  config <plugin> <key> <value>\tSets a config value for a plugin");
+        $this->log->info("  create <brain> [template]\tCreates a brain from a template");
+        $this->log->info("  delete <brain>\tDeletes a brain");
+        $this->log->info("  help\t\t\tShows this help message");
+        return true;
     }
 }
