@@ -146,7 +146,7 @@ class Skull
     {
         $this->log->info("Cleaning...");
         $this->log->info("Cleaning composer cache...");
-        Composer::command('clear-cache') or throw new \Exception("Failed to clean composer cache");
+        Composer::command($this->rootDir, 'clear-cache') or throw new \Exception("Failed to clean composer cache");
         $this->log->info("Cleaning git cache...");
         Git::command($this->rootDir, 'gc --aggressive --prune=now') or throw new \Exception("Failed to clean git cache");
         $this->log->info("Cleaning complete");
