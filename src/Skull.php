@@ -4,11 +4,11 @@ namespace Discommand2\Core;
 
 class Skull
 {
-
     private ?Brain $brain = null;
+
     public function __construct(private Log $log, private string $myName)
     {
-        $this->log->debug("$myName's skull initialized!");
+        $this->log->debug("skull initialized");
     }
 
     public function run(array $argv): bool
@@ -27,15 +27,51 @@ class Skull
                 return $this->remove($argv);
             case 'config':
                 return $this->config($argv);
+            case 'create':
+                return $this->create($argv);
+            case 'delete':
+                return $this->delete($argv);
             default:
                 echo "Usage:\n";
-                echo "brain start";
+                echo "brain start\n";
                 echo "brain update [pluginName]\n";
                 echo "brain upgrade [pluginName] [force]\n";
                 echo "brain install [pluginName]\n";
                 echo "brain remove [pluginName]\n";
                 echo "brain config [pluginName] [setting] [key/value] [key/value]\n";
+                echo "brain create [brainName] [template]\n";
+                echo "brain delete [brainName] [force]\n";
         }
+        return true;
+    }
+
+    public function create($argv): bool
+    {
+        [$brainName, $brainPath] = $this->validateCreate($argv);
+        $url = $this->createFromTemplate($argv);
+        Git::command("submodule add -b main -f $url $brainPath") or throw new \Exception("Failed to clone $url");
+        Composer::command("install --working-dir=$brainPath") or throw new \Exception("Failed to install dependencies for $brainName");
+        $this->log->info("$brainName created successfully");
+        return true;
+    }
+
+    public function delete($argv): bool
+    {
+        [$brainName, $brainPath, $force] = $this->validateDelete($argv);
+
+        if (!$force) {
+            $confirmation = readline("[WARNING] Are you sure you want to delete " . $brainName . " including their home directory, sql database(s), message history, and settings? Please type 'yes' exactly to confirm: ");
+            if ($confirmation !== 'yes') {
+                $this->log->error("Delete Aborted");
+                return false;
+            }
+        }
+
+        $this->log->info("Deleting $brainName...");
+        Git::command("submodule deinit -f $brainPath") or throw new \Exception("Failed to deinit $brainName");
+        Git::command("rm -f $brainPath") or throw new \Exception("Failed to git remove $brainName");
+        Git::command("gc --aggressive --prune=now") or throw new \Exception("Failed to git gc");
+        $this->log->info("$brainName deleted successfully");
         return true;
     }
 
@@ -57,7 +93,7 @@ class Skull
         if (!$force) {
             $confirmation = readline("[WARNING] Are you sure you want to upgrade$plugin beyond the current stable version? Please type 'yes' exactly to confirm: ");
             if ($confirmation !== 'yes') {
-                $this->log->error("Upgrade Aborted!");
+                $this->log->error("Upgrade Aborted");
                 return false;
             }
         }
@@ -65,6 +101,53 @@ class Skull
         return Composer::command('upgrade' . $plugin);
     }
 
+    public function install($argv): bool
+    {
+        if (!isset($argv[2]) || $argv[2] === '') throw new \Exception("Plugin name not specified");
+        $this->log->info("Installing " . $argv[2] . "...");
+        // if the argument doesn't already include a / then prepend discommand2/
+        if (strpos($argv[2], '/') === false) $argv[2] = 'discommand2/' . $argv[2];
+        return Composer::command('require ' . ($argv[2]));
+    }
+
+    public function remove($argv): bool
+    {
+        if (!isset($argv[2]) || $argv[2] === '') throw new \Exception("Plugin name not specified");
+        $this->log->info("Removing " . $argv[2] . "...");
+        return Composer::command('remove discommand2/' . ($argv[2]));
+    }
+
+    public function start($argv): bool
+    {
+        $this->log->info("Starting {$this->myName}...");
+        $this->brain = new Brain($this->log, $this->myName);
+        $this->brain->think() or throw new \Exception("{$this->myName} failed to think");
+        $this->log->info("{$this->myName} started successfully");
+        return true;
+    }
+
+    public function config($argv): bool
+    {
+        if (!isset($argv[2]) || $argv[2] === '') throw new \Exception("Plugin name not specified");
+        if (!$this->validatePluginName($argv[2])) throw new \Exception("Plugin not installed");
+        $pluginName = $argv[2];
+        if (count($argv) < 5) throw new \Exception("Insufficient arguments");
+        $this->log->info("Configuring {$this->myName}...");
+        $value = array_pop($argv);
+        $keys = array_slice($argv, 3);
+        $config = [];
+        $temp = &$config;
+        foreach ($keys as $key) {
+            $temp[$key] = [];
+            $temp = &$temp[$key];
+        }
+        $temp = $value;
+        Config::set($pluginName, $config);
+        $this->log->info("configured successfully");
+        return true;
+    }
+
+    // Additional methods from Discommand2 class
     public function validateUpgrade($argv): array
     {
         $plugin = '';
@@ -81,59 +164,53 @@ class Skull
         return [$plugin, $force];
     }
 
-    public function install($argv): bool
+    public function validateCreate($argv): array
     {
-        if (!isset($argv[2]) || $argv[2] === '') throw new \Exception("Plugin name not specified!");
-        $this->log->info("Installing " . $argv[2] . "...");
-        // if the argument doesn't already include a / then prepend discommand2/
-        if (strpos($argv[2], '/') === false) $argv[2] = 'discommand2/' . $argv[2];
-        return Composer::command('require ' . ($argv[2]));
+        if (!isset($argv[2])) throw new \Exception("Brain name not specified!");
+        if (!$this->validateBrainName($argv[2])) throw new \Exception("Invalid brain name!");
+        $brainName = $argv[2];
+        $basePath = Config::get('discommand2', 'brains');
+        $brainPath = $basePath . '/' . $brainName;
+        if (file_exists($brainPath)) throw new \Exception("$brainName already exists! use config, start, or delete instead.");
+        return [$brainName, $brainPath];
     }
 
-    public function remove($argv): bool
+    public function createFromTemplate($argv): string
     {
-        if (!isset($argv[2]) || $argv[2] === '') throw new \Exception("Plugin name not specified!");
-        $this->log->info("Removing " . $argv[2] . "...");
-        return Composer::command('remove discommand2/' . ($argv[2]));
+        if (!isset($argv[3]) || $argv[3] === '') $argv[3] = "brain-template";
+        if (strpos($argv[3], '/') === false) $argv[3] = 'discommand2/' . $argv[3];
+        if (strpos($argv[3], 'https://') === 0) $url = $argv[3];
+        else if (strpos($argv[3], 'git@github:') === 0) $url = $argv[3];
+        else if (strpos($argv[3], 'bitbucket.org:') === 0) $url = $argv[3];
+        else $url = 'git@github.com:' . $argv[3] . '.git';
+        $this->log->info("Creating {$argv[2]} from template " . $url);
+        return $url;
     }
 
-    public function start($argv): bool
+    public function validateDelete($argv): array
     {
-        $this->log->info("Starting {$this->myName}...");
-        $this->brain = new Brain($this->log, $this->myName);
-        $this->brain->think() or throw new \Exception("{$this->myName} failed to think!");
-        $this->log->info("{$this->myName} started successfully!");
-        return true;
+        if (!isset($argv[2])) throw new \Exception("Brain name not specified!");
+        if (!$this->validateBrainName($argv[2])) throw new \Exception("Invalid brain name!");
+        $brainName = $argv[2];
+        $brainPath = $this->getPath($brainName);
+        if (!file_exists($brainPath)) throw new \Exception("$brainName doesn't exist to begin with!");
+        $force = isset($argv[3]) && $argv[3] === 'force';
+        return [$brainName, $brainPath, $force];
     }
 
-    public function config($argv): bool
+    public function getPath($brainName): string
     {
-        if (!isset($argv[2]) || $argv[2] === '') throw new \Exception("Plugin name not specified!");
-        if (!$this->validatePluginName($argv[2])) throw new \Exception("Plugin not installed!");
-        $pluginName = $argv[2];
-
-        if (count($argv) < 5) throw new \Exception("Insufficient arguments!");
-
-        $this->log->info("Configuring {$this->myName}...");
-
-        $value = array_pop($argv);
-        $keys = array_slice($argv, 3);
-
-        $config = [];
-        $temp = &$config;
-        foreach ($keys as $key) {
-            $temp[$key] = [];
-            $temp = &$temp[$key];
-        }
-
-        $temp = $value;
-
-        Config::set($pluginName, $config);
-
-        $this->log->info($this->myName . " configured successfully!");
-        return true;
+        $basePath = Config::get('discommand2', 'brains');
+        return $basePath . '/' . $brainName;
     }
 
+    public function validateBrainName($name): bool
+    {
+        // must be a valid linux username/foldername (no spaces, no special characters except _ and -)
+        return preg_match('/^[a-z0-9_-]+$/i', $name);
+    }
+
+    // Additional methods from Skull class
     public function validatePluginName($pluginName): bool
     {
         $composerLock = json_decode(file_get_contents(__DIR__ . '/../composer.lock'), true);
