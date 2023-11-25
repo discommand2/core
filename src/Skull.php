@@ -6,7 +6,7 @@ use Discommand2\Core\Validators\SkullValidators;
 
 class Skull
 {
-    private array $brains = [];
+    private ?Brain $brain = null;
 
     public function __construct(private Log $log, private string $rootDir, private string $myName)
     {
@@ -116,8 +116,8 @@ class Skull
 
     public function start($argv): bool
     {
-        $this->brains[] = new Brain($this->log, $this->myName);
-        foreach ($this->brains as $brain) $brain->think() or throw new \Exception("{$this->myName} failed to think");
+        $this->brain = new Brain($this->log, $this->myName);
+        $this->brain->think() or throw new \Exception("{$this->myName} failed to think");
         return true;
     }
 
