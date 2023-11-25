@@ -46,7 +46,7 @@ class Skull
         [$brainName, $brainPath] = SkullValidators::validateCreate($argv);
         $url = SkullValidators::createFromTemplate($argv);
         Git::command($this->rootDir, "submodule add -b main -f $url $brainPath") or throw new \Exception("Failed to clone $url");
-        Composer::command("install --working-dir=$brainPath") or throw new \Exception("Failed to install dependencies for $brainName");
+        Composer::command($brainPath, "install") or throw new \Exception("Failed to install dependencies for $brainName");
         $this->log->info("$brainName created successfully");
         return true;
     }
@@ -81,7 +81,7 @@ class Skull
             $this->log->info("Updating everything...");
             $plugin = '';
         }
-        return Composer::command('update' . $plugin);
+        return Composer::command($this->rootDir, 'update' . $plugin);
     }
 
     public function upgrade($argv): bool
@@ -95,7 +95,7 @@ class Skull
             }
         }
         $this->log->info("Upgrading$plugin...");
-        return Composer::command('upgrade' . $plugin);
+        return Composer::command($this->rootDir, 'upgrade' . $plugin);
     }
 
     public function install($argv): bool
@@ -104,14 +104,14 @@ class Skull
         $this->log->info("Installing " . $argv[2] . "...");
         // if the argument doesn't already include a / then prepend discommand2/
         if (strpos($argv[2], '/') === false) $argv[2] = 'discommand2/' . $argv[2];
-        return Composer::command('require ' . ($argv[2]));
+        return Composer::command($this->rootDir, 'require ' . ($argv[2]));
     }
 
     public function remove($argv): bool
     {
         if (!isset($argv[2]) || $argv[2] === '') throw new \Exception("Plugin name not specified");
         $this->log->info("Removing " . $argv[2] . "...");
-        return Composer::command('remove discommand2/' . ($argv[2]));
+        return Composer::command($this->rootDir,  'remove discommand2/' . ($argv[2]));
     }
 
     public function start($argv): bool
